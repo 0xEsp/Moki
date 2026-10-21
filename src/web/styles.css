@@ -271,41 +271,54 @@ select.input {
   margin: 0 auto;
   padding: 28px;
 }
+/* El texto manda: el comando ocupa lo que sobra y se recorta con «…» (se copia entero). */
 .dash-mcp {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 24px;
+  grid-template-columns: minmax(280px, 5fr) minmax(0, 7fr);
+  gap: 32px;
   align-items: center;
-  background: #111;
-  color: #eee;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  border: 1px solid var(--ui-border);
   border-radius: 12px;
-  padding: 20px 24px;
+  padding: 24px 28px;
   margin-bottom: 28px;
 }
 .dash-mcp h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  color: #fff;
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: var(--ui-text);
 }
 .dash-mcp p {
   margin: 0;
-  color: #aaa;
-  max-width: 560px;
-  font-size: 13px;
+  color: var(--ui-muted-2);
+  font-size: 14px;
+  line-height: 1.55;
 }
 .dash-cmd {
   display: flex;
   gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 .dash-cmd code {
-  font: 12px var(--ui-mono);
-  background: #222;
-  border: 1px solid #333;
-  padding: 7px 10px;
-  border-radius: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  color: #ffb4a3;
+  font: 12px var(--ui-mono);
+  color: var(--ui-muted);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+@media (max-width: 760px) {
+  .dash-mcp {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 .dash-error {
   background: var(--ui-danger-bg);
@@ -1350,10 +1363,6 @@ select.input {
 .token-row .error-text {
   width: 100%;
 }
-.dash-mcp .btn {
-  color: var(--ui-text);
-}
-
 /* ---------------------------------------------------------------- componentes */
 .artboard-label.component,
 .artboard-label.component.selected {

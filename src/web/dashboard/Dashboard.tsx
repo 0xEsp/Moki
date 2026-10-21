@@ -258,7 +258,7 @@ export function Dashboard() {
             </p>
           </div>
           <div className="dash-cmd">
-            <code>{cmd}</code>
+            <code title={cmd}>{cmd}</code>
             <button
               className="btn"
               onClick={() => {
