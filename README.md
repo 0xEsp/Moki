@@ -283,3 +283,9 @@ node scripts/mcp-e2e.mjs 7410 /tmp/out    # full MCP suite against a running ser
 
 The e2e suites (`scripts/*e2e*.mjs`, `scripts/replicate-paper-flow.mjs`) accept `MOKI_URL` and
 `MOKI_TOKEN` to test against a remote deployment.
+
+---
+
+## License
+
+[MIT](LICENSE) © 0xEsp

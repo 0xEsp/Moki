@@ -66,5 +66,6 @@
   },
   "bin": {
     "moki-mcp": "bin/moki-mcp.mjs"
-  }
+  },
+  "license": "MIT"
 }
