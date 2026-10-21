@@ -62,6 +62,24 @@ mv data data.old && tar -xzf releases/moki-data-YYYYMMDD-HHMMSS.tar.gz
 docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d moki
 ```
 
+## Deploying to a server with more memory (e.g. a Mac mini)
+
+The same scripts deploy to any always-on machine with Docker (OrbStack or Docker Desktop on macOS).
+Set `MOKI_DEPLOY_PROFILE=server` in `deploy.local.env`: it uses `docker-compose.server.yml` and the
+image `moki:server`, which drop the Pi's low-memory profile (8 Chromium runtimes, 3 GB Node heap,
+6 GB container limit by default). Everything else is identical: `setup-secrets.sh`, `deploy.sh`,
+`claude-mcp-add.sh`.
+
+On macOS the `docker` CLI must be on the PATH of non-interactive ssh sessions (OrbStack:
+`/Applications/OrbStack.app/Contents/MacOS/xbin`, e.g. exported from `~/.zshenv`), and the first
+time the container reads a folder under `~/Documents` macOS may ask OrbStack for permission on the
+server's screen. Files of ~100k nodes need more than 6 GB: raise `MOKI_MEM_LIMIT` (and OrbStack's
+memory, `orb config set memory_mib …`) if screenshots fail with an out-of-memory crash.
+
+To move your designs from the Pi, stop Moki there and copy its `data/` folder (files, folders,
+assets and comments) into `<MOKI_DEPLOY_DIR>/data` on the new server before the first start. File
+and node IDs are preserved.
+
 ## Notes
 
 - On Raspberry Pi OS, Docker's memory limit (`mem_limit`) only applies if the kernel has memory

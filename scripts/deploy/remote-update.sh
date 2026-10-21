@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Se ejecuta EN la Raspberry (lo llama deploy.sh). Carga una imagen nueva de Moki y recrea el
-# contenedor sin tocar los datos: antes copia data/ (sin exports) a releases/.
-#   bash scripts/deploy/remote-update.sh releases/moki-pi-XXXX.tar.gz
+# Se ejecuta EN el servidor (Raspberry o Mac mini; lo llama deploy.sh). Carga una imagen nueva de
+# Moki y recrea el contenedor sin tocar los datos: antes copia data/ (sin exports) a releases/.
+#   MOKI_DEPLOY_PROFILE=pi|server bash scripts/deploy/remote-update.sh releases/moki-<perfil>-XXXX.tar.gz
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -17,7 +17,8 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
   exit 1
 fi
 
-COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.pi.yml)
+PROFILE="${MOKI_DEPLOY_PROFILE:-pi}"
+COMPOSE=(docker compose -f docker-compose.yml -f "docker-compose.$PROFILE.yml")
 IMAGE="$("${COMPOSE[@]}" config --images | head -n 1)"
 [[ -n "$IMAGE" ]] || { echo "Error: no se pudo resolver la imagen del servicio." >&2; exit 1; }
 
@@ -62,7 +63,7 @@ done
 
 # Limpieza: últimas 3 imágenes y 5 copias de datos; capas huérfanas fuera.
 # (`|| true`: en el primer despliegue no hay copias y `ls` falla, lo que con pipefail abortaría.)
-ls -1t releases/moki-pi-*.tar.gz 2>/dev/null | tail -n +4 | xargs -r rm -f || true
+ls -1t releases/moki-"$PROFILE"-*.tar.gz 2>/dev/null | tail -n +4 | xargs -r rm -f || true
 ls -1t releases/moki-data-*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f || true
 docker image prune -f >/dev/null 2>&1 || true
 

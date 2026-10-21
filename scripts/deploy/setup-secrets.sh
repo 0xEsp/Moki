@@ -10,8 +10,9 @@
 #   bash scripts/deploy/setup-secrets.sh --rotate   # token nuevo (hay que volver a registrar el MCP)
 #
 # Variables (en deploy.local.env): MOKI_DEPLOY_SSH, MOKI_DEPLOY_DIR, MOKI_DEPLOY_URL y,
-# opcionalmente, MOKI_ALLOWED_HOSTS (nombres/IPs extra con los que entras a la Pi) y
-# MOKI_MEM_LIMIT (límite de memoria del contenedor, por defecto 1536m).
+# opcionalmente, MOKI_ALLOWED_HOSTS (nombres/IPs extra con los que entras a la Pi),
+# MOKI_DEPLOY_PROFILE (pi | server) y MOKI_MEM_LIMIT (límite de memoria del contenedor; por
+# defecto 1536m en la Pi y 6g en el perfil server).
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -37,6 +38,9 @@ PI_HOST="${HOSTPORT%%:*}"
 PI_PORT="7410"
 [[ "$HOSTPORT" == *:* ]] && PI_PORT="${HOSTPORT##*:}"
 ALLOWED="${MOKI_ALLOWED_HOSTS:-$PI_HOST}"
+DEFAULT_MEM="1536m"
+[[ "${MOKI_DEPLOY_PROFILE:-pi}" == "server" ]] && DEFAULT_MEM="6g"
+MEM_LIMIT="${MOKI_MEM_LIMIT:-$DEFAULT_MEM}"
 
 KEYCHAIN_SERVICE="moki"
 TOKEN="$(security find-generic-password -s "$KEYCHAIN_SERVICE" -a "$REMOTE" -w 2>/dev/null || true)"
@@ -50,19 +54,19 @@ fi
 
 ssh "$REMOTE" "mkdir -p $REMOTE_DIR"
 if ssh "$REMOTE" "test -f $REMOTE_DIR/.env" && [[ "$MODE" != "--force" && "$MODE" != "--rotate" ]]; then
-  echo "La Raspberry ya tiene configuración ($REMOTE_DIR/.env); no se toca. Usa --force para reescribirla."
+  echo "$REMOTE ya tiene configuración ($REMOTE_DIR/.env); no se toca. Usa --force para reescribirla."
   exit 0
 fi
 
 # Se envía por stdin (no aparece en la línea de comandos ni en los logs).
 ssh "$REMOTE" "umask 077 && cat > $REMOTE_DIR/.env" <<CONF
-# Configuración de Moki en esta Raspberry. Generado por scripts/deploy/setup-secrets.sh.
+# Configuración de Moki en este servidor. Generado por scripts/deploy/setup-secrets.sh.
 MOKI_TOKEN=$TOKEN
 MOKI_PI_HOST=$PI_HOST
 MOKI_PI_PORT=$PI_PORT
 MOKI_ALLOWED_HOSTS=$ALLOWED
-MOKI_MEM_LIMIT=${MOKI_MEM_LIMIT:-1536m}
-MOKI_MEMSWAP_LIMIT=${MOKI_MEM_LIMIT:-1536m}
+MOKI_MEM_LIMIT=$MEM_LIMIT
+MOKI_MEMSWAP_LIMIT=$MEM_LIMIT
 CONF
 echo "✓ Configuración escrita en $REMOTE:$REMOTE_DIR/.env (permisos 600)"
 echo "  Hosts permitidos: $ALLOWED · Publicado en el puerto $PI_PORT"

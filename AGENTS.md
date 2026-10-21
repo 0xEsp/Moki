@@ -170,5 +170,22 @@ To test without touching your data: `MOKI_DATA_DIR=/tmp/moki-test MOKI_PORT=74xx
 ## 9. Deployment
 
 - Local: `docker compose up -d --build` (port 7410 on loopback).
-- Raspberry Pi/server: `bash scripts/deploy/deploy.sh` (build on the Mac → `scp` → activation with
-  backup). Initial setup and secrets: [docs/DEPLOY.md](docs/DEPLOY.md).
+- Remote server (Raspberry Pi or an always-on Mac with OrbStack): `bash scripts/deploy/deploy.sh`
+  (build on the Mac → `scp` → activation with backup). Initial setup and secrets:
+  [docs/DEPLOY.md](docs/DEPLOY.md).
+
+**When asked to "deploy Moki"** (no further details needed):
+
+1. Run `bash scripts/deploy/deploy.sh` from the repo root. Everything it needs is already defined:
+   the target (ssh, folder, URL) and the profile (`MOKI_DEPLOY_PROFILE`: `pi` or `server`) come
+   from `deploy.local.env`; the token lives in the Keychain and in the target's `.env`.
+2. It needs Docker running on this Mac (to build the image) and key-based ssh to the target. It
+   runs typecheck and tests first; don't skip them unless asked (`SKIP_CHECKS=1`).
+3. Done when it prints `✓ Moki responde en <MOKI_DEPLOY_URL>`. Data in `<MOKI_DEPLOY_DIR>/data` is
+   never touched; a backup is written to `releases/` before the container is recreated.
+4. If `deploy.local.env` is missing, ask for the target instead of guessing. Never write hosts or
+   tokens into tracked files.
+
+Only when the target changes: `setup-secrets.sh` (writes the target's `.env`) and
+`claude-mcp-add.sh --scope user` (re-registers the MCP; remove the old one first with
+`claude mcp remove moki -s user`).

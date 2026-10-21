@@ -66,10 +66,11 @@ docker compose up -d --build
 - Your designs live in `./data` (exports in `./data/exports`).
 - It only listens on `127.0.0.1`: nobody else on your network can reach it.
 
-### Option B — Raspberry Pi (or another home server)
+### Option B — Raspberry Pi or another home server (e.g. a Mac mini)
 
-Moki deploys with a single command from the Mac: it builds the `arm64` image, copies it to the Pi
-and activates it after backing up the data.
+Moki deploys with a single command from the Mac: it builds the `arm64` image, copies it to the
+server and activates it after backing up the data. `MOKI_DEPLOY_PROFILE=pi` (default) uses the
+low-memory profile; `server` is for machines with RAM to spare, such as a Mac mini with OrbStack.
 
 ```bash
 bash scripts/deploy/deploy.sh
@@ -99,7 +100,7 @@ Chrome installed (or `MOKI_CHROMIUM_PATH`) for the MCP runtime and screenshots.
 claude mcp add --transport http moki http://localhost:7410/mcp
 ```
 
-**Claude Code** (Moki on the Raspberry Pi, with the token stored in the macOS Keychain):
+**Claude Code** (Moki on a remote server, with the token stored in the macOS Keychain):
 
 ```bash
 bash scripts/deploy/claude-mcp-add.sh
