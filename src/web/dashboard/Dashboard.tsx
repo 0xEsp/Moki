@@ -2,6 +2,7 @@ import { ExportDialog } from '../panels/ExportDialog';
 import { ThemeToggle } from '../ThemeToggle';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { navigate } from '../router';
+import { copyText } from '../clipboard';
 
 interface Resource {
   id: string;
@@ -262,7 +263,8 @@ export function Dashboard() {
             <button
               className="btn"
               onClick={() => {
-                navigator.clipboard.writeText(cmd).then(() => {
+                copyText(cmd).then((ok) => {
+                  if (!ok) return;
                   setCopied(true);
                   setTimeout(() => setCopied(false), 1500);
                 });

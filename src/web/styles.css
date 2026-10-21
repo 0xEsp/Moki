@@ -31,6 +31,8 @@
   --ui-dot: #c4c4c4;
   --ui-dot-hover: #888888;
   --ui-code-key: #9b3b9b;
+  /* Comandos destacados (p. ej. el de conectar un agente en el inicio). */
+  --ui-code-accent: #c2410c;
   /* Fondo por defecto del canvas cuando la página usa el gris claro por defecto. */
   --ui-canvas-default: #ececec;
   --ui-font: 'Inter', system-ui, -apple-system, sans-serif;
@@ -69,6 +71,7 @@
   --ui-dot: #555555;
   --ui-dot-hover: #b0b0b0;
   --ui-code-key: #e199e1;
+  --ui-code-accent: #ffb4a3;
   --ui-canvas-default: #1e1e1e;
 }
 
@@ -308,7 +311,7 @@ select.input {
   text-overflow: ellipsis;
   white-space: nowrap;
   font: 12px var(--ui-mono);
-  color: var(--ui-muted);
+  color: var(--ui-code-accent);
   background: var(--ui-panel);
   border: 1px solid var(--ui-border);
   padding: 8px 10px;

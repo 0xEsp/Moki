@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { DocStore } from '../state/doc-store';
 import type { EditorState } from '../editor/editor-state';
 import { Seg } from './controls';
+import { copyText } from '../clipboard';
 
 type GenerateJsx = (
   doc: DocStore,
@@ -53,7 +54,8 @@ export const CodePanel = observer(function CodePanel({ editor }: { editor: Edito
           <button
             className="btn btn-sm"
             onClick={() =>
-              navigator.clipboard.writeText(code).then(() => {
+              copyText(code).then((ok) => {
+                if (!ok) return;
                 setCopied(true);
                 setTimeout(() => setCopied(false), 1200);
               })
