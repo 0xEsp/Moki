@@ -1,0 +1,38 @@
+# Override para Raspberry Pi 4/5 (64 bits) accesible desde la red local.
+#   docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d --build
+# Requiere un fichero .env junto a este (ver .env.example) con al menos MOKI_TOKEN y MOKI_PI_HOST.
+services:
+  moki:
+    platform: linux/arm64
+    image: moki:pi
+    # Publicado en todas las interfaces de la Pi (LAN). El acceso exige MOKI_TOKEN.
+    ports: !override
+      - "${MOKI_PI_PORT:-7410}:7410"
+    environment:
+      MOKI_TOKEN: ${MOKI_TOKEN:?Define MOKI_TOKEN en .env (openssl rand -hex 24)}
+      MOKI_ALLOWED_HOSTS: ${MOKI_ALLOWED_HOSTS:-${MOKI_PI_HOST}}
+      MOKI_PUBLIC_ORIGIN: http://${MOKI_PI_HOST:?Define MOKI_PI_HOST en .env (IP o nombre de la Pi)}:${MOKI_PI_PORT:-7410}
+      MOKI_EXPORT_HOST_DIR: ${MOKI_EXPORT_HOST_DIR:-${PWD}/data/exports}
+      MOKI_LOW_MEMORY: "1"
+      MOKI_MAX_RUNTIMES: ${MOKI_MAX_RUNTIMES:-2}
+      MOKI_RUNTIME_IDLE_MS: ${MOKI_RUNTIME_IDLE_MS:-300000}
+      MOKI_CAPTURE_IDLE_MS: ${MOKI_CAPTURE_IDLE_MS:-120000}
+      MOKI_BROWSER_IDLE_MS: ${MOKI_BROWSER_IDLE_MS:-180000}
+      MOKI_MAX_EXPORT_SIDE: ${MOKI_MAX_EXPORT_SIDE:-8000}
+      MOKI_CHROMIUM_ARGS: ${MOKI_CHROMIUM_ARGS:-}
+      NODE_OPTIONS: --max-old-space-size=512
+    mem_limit: ${MOKI_MEM_LIMIT:-2560m}
+    memswap_limit: ${MOKI_MEMSWAP_LIMIT:-3584m}
+    shm_size: "512m"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7410/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

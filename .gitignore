@@ -1,0 +1,17 @@
+node_modules/
+dist/
+data/
+releases/
+*.tar.gz
+
+# Generado por scripts/build-fonts.mjs (postinstall / build)
+public/fonts/
+
+# Secretos y configuración local: nunca al repositorio
+.env
+.env.*
+!.env.example
+deploy.local.env
+
+.DS_Store
+*.log

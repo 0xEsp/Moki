@@ -1,0 +1,20 @@
+services:
+  moki:
+    build: .
+    image: moki:local
+    container_name: moki
+    restart: unless-stopped
+    # tini como PID 1: recoge los procesos huérfanos de Chromium (si no, quedan zombis).
+    init: true
+    ports:
+      # Solo loopback: el MCP y el editor no quedan expuestos a la red.
+      - "127.0.0.1:7410:7410"
+    volumes:
+      - ./data:/data
+    environment:
+      MOKI_EXPORT_HOST_DIR: ${PWD}/data/exports
+      MOKI_LOCALHOST_ALIAS: host.docker.internal
+      MOKI_PUBLIC_ORIGIN: http://localhost:7410
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    shm_size: "1gb"

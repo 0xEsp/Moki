@@ -1,0 +1,12 @@
+node_modules
+data
+dist
+.git
+*.log
+.DS_Store
+# Secretos: nunca dentro de la imagen.
+.env
+.env.*
+!.env.example
+deploy.local*
+releases
