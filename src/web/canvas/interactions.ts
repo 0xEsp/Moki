@@ -131,6 +131,7 @@ export class CanvasController {
     }
     switch (d.kind) {
       case 'pan':
+        ed.stopCameraAnimation();
         ed.setCamera({ x: d.cx + (sx - d.sx), y: d.cy + (sy - d.sy), scale: ed.camera.scale });
         return;
       case 'marquee': {
@@ -231,6 +232,7 @@ export class CanvasController {
   onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const ed = this.editor;
+    ed.stopCameraAnimation();
     const { sx, sy } = this.local(e);
     if (e.ctrlKey || e.metaKey) {
       const factor = Math.exp(-e.deltaY * (e.ctrlKey && !e.metaKey ? 0.01 : 0.0025));
@@ -253,6 +255,7 @@ export class CanvasController {
   private gestureStartScale = 1;
   onGestureStart = (e: Event) => {
     e.preventDefault();
+    this.editor.stopCameraAnimation();
     this.gestureStartScale = this.editor.camera.scale;
   };
   onGestureChange = (e: Event) => {

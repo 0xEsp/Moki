@@ -1,6 +1,6 @@
 import { runInAction } from 'mobx';
 import { observer } from 'mobx-react-lite';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { PageIcon } from '../../core/types';
 import type { EditorState } from '../editor/editor-state';
 import { ComponentsPanel } from './ComponentsPanel';
@@ -325,10 +325,15 @@ const LayerRow = observer(function LayerRowView({
   const { doc } = editor;
   const node = doc.node(id);
   const [renaming, setRenaming] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const selected = editor.isSelected(id);
+  // Al seleccionar en el canvas, la fila se trae a la vista (solo la primera de la selección).
+  useEffect(() => {
+    if (selected && editor.selection[0] === id) rowRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [selected, editor, id]);
   if (!node) return null;
   const kids = doc.childIds(id);
   const expanded = editor.expanded.has(id);
-  const selected = editor.selection.includes(id);
   const container = node.component === 'Frame' || node.component === 'SVG';
   const hidden = node.isVisible === false;
   const label = node.component === 'Text' && !node.labelIsModified && node.textValue ? node.textValue.slice(0, 40) : node.label;
@@ -340,7 +345,8 @@ const LayerRow = observer(function LayerRowView({
   return (
     <>
       <div
-        className={`layer-row${kind}${selected ? ' selected' : ''}${editor.hoverId === id ? ' hover' : ''}${hidden ? ' hidden' : ''}${drop?.id === id ? ` drop-${drop.pos}` : ''}`}
+        ref={rowRef}
+        className={`layer-row${kind}${selected ? ' selected' : ''}${editor.isHovered(id) ? ' hover' : ''}${hidden ? ' hidden' : ''}${drop?.id === id ? ` drop-${drop.pos}` : ''}`}
         style={{ paddingLeft: 8 + depth * 14 }}
         draggable={!renaming && !virtual}
         onDragStart={(e) => {
@@ -362,7 +368,10 @@ const LayerRow = observer(function LayerRowView({
         onMouseLeave={() => editor.setHover(null)}
         onClick={(e) => {
           if (e.shiftKey || e.metaKey || e.ctrlKey) editor.toggleSelect(id);
-          else editor.select([id]);
+          else {
+            editor.select([id]);
+            editor.revealNode(id);
+          }
         }}
         onDoubleClick={() => !virtual && setRenaming(true)}
       >

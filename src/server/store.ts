@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { newFileId, newUlid } from '../core/ids';
 import { createEmptyFile, normalizeFile } from '../core/new-file';
+import { purgeDeletedNodes } from '../core/tree';
 import type { CommentThread, FileSummary, FolderInfo, MokiFile } from '../core/types';
 import { paths } from './config';
 
@@ -60,7 +61,15 @@ export class Store {
       'file' in raw && 'meta' in raw
         ? { file: normalizeFile(raw.file), meta: { clientIndexSeq: raw.meta?.clientIndexSeq ?? 0 } }
         : { file: normalizeFile(raw as MokiFile), meta: { clientIndexSeq: 0 } };
+    // Al cargar de disco nadie tiene historial sobre el fichero: los borrados ya no hacen falta y
+    // solo engordan lo que se envía a cada pestaña (llegaron a ser más de la mitad del fichero).
+    const purged = purgeDeletedNodes(rec.file);
     this.loaded.set(id, rec);
+    if (purged) {
+      console.log(`[store] ${id}: ${purged} nodos borrados eliminados al cargar`);
+      // Guardar sin tocar updatedAt: el contenido visible no ha cambiado.
+      this.timers.set(id, setTimeout(() => this.save(id), DEBOUNCE_MS));
+    }
     return rec;
   }
 

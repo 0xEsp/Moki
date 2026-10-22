@@ -29,20 +29,26 @@ export const Canvas = observer(function Canvas({ editor }: { editor: EditorState
 
   // Cámara → transform (sin re-render de React).
   //
-  // Nitidez: con `will-change: transform` permanente Chrome rasteriza la capa UNA vez y luego solo
-  // escala ese bitmap, así que al hacer zoom el texto se ve borroso/pixelado. Se activa solo
-  // mientras la cámara se mueve (pan/zoom fluidos) y se quita al parar, lo que obliga a
-  // re-rasterizar a la escala real.
+  // Nitidez: con `will-change: transform` Chrome rasteriza la capa UNA vez y luego solo mueve o
+  // escala ese bitmap, así que tras un zoom el texto se vería borroso. Pero promocionar y
+  // degradar la capa obliga a rasterizar TODO el diseño (miles de nodos), así que solo se hace
+  // cuando hace falta: un pan no cambia la escala y deja la capa como está; al acabar un zoom se
+  // degrada (re-raster nítido a la escala nueva) y vuelve a promocionarse al siguiente gesto.
   useEffect(() => {
     let settle: ReturnType<typeof setTimeout> | undefined;
+    let rasterScale: number | null = null;
     const dispose = autorun(() => {
       const { x, y, scale } = editor.camera;
       const el = cameraRef.current;
       if (!el) return;
       el.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
       el.toggleAttribute('data-pixelated', scale > 1.5);
-      el.style.willChange = 'transform';
+      if (el.style.willChange !== 'transform') {
+        el.style.willChange = 'transform';
+        rasterScale = scale;
+      }
       clearTimeout(settle);
+      if (scale === rasterScale) return;
       settle = setTimeout(() => {
         el.style.willChange = 'auto';
       }, 150);

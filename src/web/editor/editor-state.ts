@@ -1,4 +1,5 @@
-import { action, makeObservable, observable, reaction, runInAction } from 'mobx';
+import { action, computed, makeObservable, observable, reaction, runInAction } from 'mobx';
+import { computedFn } from 'mobx-utils';
 import { Focus, MessageType, type WorldRect } from '../../core/protocol';
 import { rootNodeIdFor } from '../../core/ids';
 import type { FileSession } from '../state/file-session';
@@ -92,6 +93,7 @@ export class EditorState {
       dropIndicator: observable.ref,
       drawRect: observable.ref,
       now: observable,
+      selectionSet: computed,
       setPage: action,
       select: action,
       setHover: action,
@@ -215,6 +217,16 @@ export class EditorState {
     // Desplegar ancestros en el árbol de capas.
     for (const id of uniq) for (const a of this.doc.ancestors(id)) this.expanded.add(a);
   }
+  get selectionSet(): Set<string> {
+    return new Set(this.selection);
+  }
+  /**
+   * Lecturas por nodo: cada fila de Capas (y cada contorno) solo se vuelve a pintar cuando cambia
+   * SU estado, no cada vez que el hover o la selección se mueven a otra capa.
+   */
+  isSelected = computedFn((id: string): boolean => this.selectionSet.has(id));
+  isHovered = computedFn((id: string): boolean => this.hoverId === id);
+
   toggleSelect(id: string) {
     if (this.selection.includes(id)) this.select(this.selection.filter((x) => x !== id));
     else this.select([...this.selection, id]);
@@ -318,6 +330,64 @@ export class EditorState {
       y: this.viewport.height / 2 - (r.y + r.height / 2) * scale,
     });
   }
+  /**
+   * Lleva la cámara hasta un nodo si no se ve entero (al elegirlo en Capas, como Figma): lo centra
+   * manteniendo el zoom, aleja solo si no cabe y acerca si en pantalla es casi un punto.
+   */
+  revealNode(id: string, padding = 60) {
+    const r = this.measure.peek(id);
+    if (!r || r.width <= 0 || r.height <= 0) return;
+    const { scale } = this.camera;
+    const v = this.visibleWorldRect();
+    const onScreen = { w: r.width * scale, h: r.height * scale };
+    const inside = r.x >= v.minX && r.y >= v.minY && r.x + r.width <= v.maxX && r.y + r.height <= v.maxY;
+    const tiny = Math.max(onScreen.w, onScreen.h) < 12;
+    if (inside && !tiny) return;
+    const vw = Math.max(1, this.viewport.width - padding * 2);
+    const vh = Math.max(1, this.viewport.height - padding * 2);
+    const fit = Math.min(vw / r.width, vh / r.height);
+    let next = scale;
+    if (fit < scale) next = fit; // no cabe: alejar
+    else if (tiny) next = Math.min(fit, Math.max(scale, 1)); // casi invisible: acercar
+    next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, next));
+    this.animateCamera({
+      scale: next,
+      x: this.viewport.width / 2 - (r.x + r.width / 2) * next,
+      y: this.viewport.height / 2 - (r.y + r.height / 2) * next,
+    });
+  }
+
+  private cameraAnim = 0;
+  /** Transición corta de cámara (ease-out); un gesto del usuario la interrumpe. */
+  animateCamera(to: Camera, ms = 220) {
+    const from = this.camera;
+    const anim = ++this.cameraAnim;
+    const t0 = performance.now();
+    // Interpolar la escala en logarítmico para que el zoom se perciba uniforme.
+    const ls0 = Math.log(from.scale);
+    const ls1 = Math.log(to.scale);
+    const step = (now: number) => {
+      if (anim !== this.cameraAnim) return;
+      const t = Math.min(1, (now - t0) / ms);
+      const e = 1 - Math.pow(1 - t, 3);
+      const scale = Math.exp(ls0 + (ls1 - ls0) * e);
+      // Interpolar el punto de mundo que queda en el centro, no el pan en píxeles.
+      const cx = this.viewport.width / 2;
+      const cy = this.viewport.height / 2;
+      const w0 = { x: (cx - from.x) / from.scale, y: (cy - from.y) / from.scale };
+      const w1 = { x: (cx - to.x) / to.scale, y: (cy - to.y) / to.scale };
+      const wx = w0.x + (w1.x - w0.x) * e;
+      const wy = w0.y + (w1.y - w0.y) * e;
+      this.setCamera({ scale, x: cx - wx * scale, y: cy - wy * scale });
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  /** Corta una animación en curso (pan/zoom del usuario). */
+  stopCameraAnimation() {
+    this.cameraAnim++;
+  }
+
   zoomToFit() {
     const rects = this.doc
       .childIds(this.rootId)

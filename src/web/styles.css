@@ -1463,7 +1463,8 @@ select.input {
   padding: 2px 8px 6px;
   position: sticky;
   top: 0;
-  background: inherit;
+  /* Opaco: al hacer scroll (también el automático al seleccionar) las filas pasan por debajo. */
+  background: var(--ui-surface);
   z-index: 1;
 }
 .layers-tab {
@@ -1767,4 +1768,11 @@ button.token-swatch {
   padding-left: 16px;
   max-height: 120px;
   overflow: auto;
+}
+
+/* ---------------------------------------------------------------- capas: scroll a la selección */
+
+/* Al traer una fila a la vista, que no quede tapada por las pestañas fijas de arriba. */
+.layer-row {
+  scroll-margin-top: 36px;
 }

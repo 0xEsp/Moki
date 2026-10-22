@@ -56,7 +56,13 @@ let seq = 0;
 
 export class SyncHub {
   private rooms = new Map<string, Room>();
-  private wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 * 1024 });
+  // Compresión por mensaje solo para los grandes (el fichero entero al abrir: ~10× menos por la
+  // red); las ediciones pequeñas van sin comprimir para no gastar CPU en cada tecla.
+  private wss = new WebSocketServer({
+    noServer: true,
+    maxPayload: 64 * 1024 * 1024,
+    perMessageDeflate: { threshold: 64 * 1024, zlibDeflateOptions: { level: 3 } },
+  });
   private rpcHandler: RpcHandler | null = null;
   /** Escuchas de cambios de presencia (para el MCP: ficheros abiertos, foco). */
   private listeners = new Set<() => void>();

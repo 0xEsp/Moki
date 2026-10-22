@@ -158,3 +158,21 @@ export function livePages(file: MokiFile) {
 export function canvasPages(file: MokiFile) {
   return file.pages.filter((p) => !p['~'] && !p.isDivider);
 }
+
+/**
+ * Elimina de verdad los nodos borrados (soft delete) y sus relaciones. Solo es seguro cuando nadie
+ * tiene historial de deshacer sobre el fichero: el servidor lo hace al cargarlo de disco, y todo
+ * cliente que se conecta recibe el fichero entero y empieza con el historial vacío. Los mains
+ * borrados se conservan porque sus instancias siguen pintándose a partir de ellos.
+ */
+export function purgeDeletedNodes(file: MokiFile): number {
+  let purged = 0;
+  for (const [id, node] of Object.entries(file.nodes)) {
+    if (!node['~'] || node.isComponent) continue;
+    delete file.nodes[id];
+    delete file.nodeRelationships[id];
+    purged++;
+  }
+  for (const id of Object.keys(file.nodeRelationships)) if (!file.nodes[id]) delete file.nodeRelationships[id];
+  return purged;
+}

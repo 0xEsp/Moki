@@ -96,3 +96,22 @@ describe('convertToInstance', () => {
     expect(doc.view(doc.childIds(copy)[1]!)!.styles.backgroundColor).toBe('#000');
   });
 });
+
+describe('purgeDeletedNodes', () => {
+  it('quita los borrados y sus relaciones, pero conserva los mains borrados y su contenido', async () => {
+    const { purgeDeletedNodes } = await import('../tree');
+    const doc = new DocStore(createEmptyFile('t'), 0);
+    const main = button(doc, ROOT, { bg: '#685EF7', text: 'OK' });
+    doc.createComponentFrom(main);
+    const board = doc.createNode('Frame', ROOT, { label: 'Screen', styles: { display: 'flex' } });
+    const inst = doc.createInstance(main, board);
+    const gone = button(doc, board, { bg: '#000', text: 'Old' });
+    doc.deleteNodes([gone, main]);
+    const file = JSON.parse(JSON.stringify(doc.data));
+    expect(purgeDeletedNodes(file)).toBe(2); // el botón borrado y su texto
+    expect(file.nodes[gone]).toBeUndefined();
+    expect(Object.keys(file.nodeRelationships).some((k) => !file.nodes[k])).toBe(false);
+    const after = new DocStore(file, 1);
+    expect(after.view(after.childIds(inst)[0]!)!.textValue).toBe('OK'); // la instancia sigue pintando
+  });
+});

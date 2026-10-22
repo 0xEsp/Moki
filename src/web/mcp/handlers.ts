@@ -217,11 +217,9 @@ export class McpHandlers {
       }
     } else {
       let map = new Map<string, { overrideCount: number } | { error: string }>();
-      const t0 = performance.now();
       this.mutate(() => {
         map = this.doc.convertToInstances(ids, mainId);
       });
-      console.log(`[moki-mcp] convert_to_instances: ${ids.length} copias, mutación ${Math.round(performance.now() - t0)}ms`);
       for (const id of ids) {
         const r = map.get(id);
         if (r && 'overrideCount' in r) results.push({ nodeId: id, converted: true, overrides: r.overrideCount });
@@ -231,9 +229,7 @@ export class McpHandlers {
     const done = results.filter((r) => r.converted).map((r) => r.nodeId);
     if (done.length) {
       this.activity.recordWrite(ctx, done, 'edit');
-      const t1 = performance.now();
       await this.settle();
-      console.log(`[moki-mcp] convert_to_instances: espera de medida ${Math.round(performance.now() - t1)}ms`);
     }
     const failed = results.filter((r) => r.reason).length;
     return { data: { componentId: mainId, dryRun, converted: done.length, matched: results.length - failed, failed, results } };
