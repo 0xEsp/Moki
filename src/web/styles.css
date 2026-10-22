@@ -1776,3 +1776,13 @@ button.token-swatch {
 .layer-row {
   scroll-margin-top: 36px;
 }
+
+/* ---------------------------------------------------------------- canvas: nivel de detalle */
+
+/* Zoom alejado: sin desenfoques ni filtros (no se aprecian y Safari los recalcula en cada frame).
+   El selector termina en [data-fx] para que el navegador solo revise esos nodos, no todo el diseño. */
+.canvas-camera[data-lod-low] [data-fx] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  filter: none !important;
+}

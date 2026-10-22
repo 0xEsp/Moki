@@ -34,6 +34,10 @@ export const Canvas = observer(function Canvas({ editor }: { editor: EditorState
   // degradar la capa obliga a rasterizar TODO el diseño (miles de nodos), así que solo se hace
   // cuando hace falta: un pan no cambia la escala y deja la capa como está; al acabar un zoom se
   // degrada (re-raster nítido a la escala nueva) y vuelve a promocionarse al siguiente gesto.
+  //
+  // Desenfoques y filtros (`data-fx`): con zoom alejado no se distinguen y Safari los recalcula en
+  // cada frame de un pan, así que por debajo de LOD_FX_SCALE no se pintan (`data-lod-low`). Se
+  // cambia solo al cruzar el umbral: activarlos/desactivarlos rehace las capas y repinta todo.
   useEffect(() => {
     let settle: ReturnType<typeof setTimeout> | undefined;
     let rasterScale: number | null = null;
@@ -42,7 +46,8 @@ export const Canvas = observer(function Canvas({ editor }: { editor: EditorState
       const el = cameraRef.current;
       if (!el) return;
       el.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-      el.toggleAttribute('data-pixelated', scale > 1.5);
+      setFlag(el, 'data-pixelated', scale > 1.5);
+      setFlag(el, 'data-lod-low', scale < LOD_FX_SCALE);
       if (el.style.willChange !== 'transform') {
         el.style.willChange = 'transform';
         rasterScale = scale;
@@ -185,6 +190,14 @@ const ZoomHint = observer(function ZoomHint({ editor }: { editor: EditorState })
     </div>
   );
 });
+
+/** Por debajo de este zoom el canvas no pinta desenfoques ni filtros (no se aprecian). */
+const LOD_FX_SCALE = 0.35;
+
+/** Pone o quita un atributo solo si cambia (reescribirlo en cada frame invalida estilos en WebKit). */
+function setFlag(el: HTMLElement, name: string, on: boolean) {
+  if (el.hasAttribute(name) !== on) el.toggleAttribute(name, on);
+}
 
 function isDefaultCanvas(color: string | undefined): boolean {
   return !color || color.toUpperCase() === DEFAULT_CANVAS_COLOR.toUpperCase();

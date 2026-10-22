@@ -69,6 +69,8 @@ const RenderNode = observer(function RenderNodeView({
   const kids: ReactNode[] = childIds.map((c) => <RenderNode key={c} id={c} parentId={id} opts={opts} />);
 
   const common: Record<string, unknown> = { ref, 'data-node-id': id, style };
+  // Efectos caros de pintar (sobre todo en Safari): el canvas no los pinta con zoom alejado.
+  if (style.backdropFilter || style.WebkitBackdropFilter || style.filter) common['data-fx'] = '';
 
   switch (node.component) {
     case 'Text':
