@@ -87,6 +87,7 @@ In repeated rows (lists, menus, tables, settings), every row must share the same
 - Editing the main component (update_styles, set_text_content, write_html inside it) updates every instance. list_components shows what already exists — check it before building a new button.
 - Instance children have virtual IDs "<instanceId>::<mainChildId>" (see get_tree_summary). update_styles / set_text_content on them write per-instance overrides (e.g. a different label or color); delete_nodes hides them in that instance only. You cannot add, move or rename layers inside an instance: edit the main, or detach_instance first. reset_overrides restores an instance (or one of its layers) to the main.
 - Component variants: make one main per variant (e.g. "Button / Primary", "Button / Secondary").
+- Hand-made copies of something that is (or should be) a component: convert them with convert_to_instances instead of rebuilding them. Each copy keeps its place and look, and its differences become overrides. Run it with dryRun first; copies with a different layer structure are reported and left untouched.
 
 ### Exporting to code
 - get_jsx (inline styles or Tailwind), get_computed_styles and get_fill_image give exact values. Screenshots are only for visual verification.

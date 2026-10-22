@@ -6,6 +6,7 @@ import { nextNodeId, nextPageId, nextTokenId, rootNodeIdFor } from '../../core/i
 import { mergeStyles } from '../../core/css';
 import { canHaveChildren, makeRel, parseRel, isRootId } from '../../core/tree';
 import { ComponentResolver, isVirtualId, mergeOverride, VSEP, type NodeOverride } from '../../core/components';
+import { planInstanceConversion } from '../../core/instance-convert';
 import {
   FREEFORM_DISPLAY,
   type ComponentType,
@@ -778,6 +779,71 @@ export class DocStore {
       children.forEach((c, i) => add(c, id, keys[i]!));
     });
     return map;
+  }
+
+  /**
+   * Convierte en el sitio copias a mano de un componente en instancias suyas: conservan id,
+   * posición en el padre y aspecto (las diferencias pasan a overrides). Primero se planifican
+   * todas (solo lecturas) y luego se aplican en una única acción: con ficheros grandes, mutar
+   * entre lecturas obligaría a recalcular los índices del árbol en cada copia.
+   */
+  convertToInstances(ids: string[], mainId: string): Map<string, { overrideCount: number } | { error: string }> {
+    const out = new Map<string, { overrideCount: number } | { error: string }>();
+    const main = this.node(mainId);
+    if (!main?.isComponent) throw new Error(`Not a component: ${mainId}`);
+    const wanted = new Set(ids);
+    const plans: { id: string; rootStyles: Styles; overrides: Record<string, NodeOverride>; count: number; children: string[]; descendants: string[] }[] = [];
+    for (const id of ids) {
+      try {
+        const n = this.node(id);
+        if (!n || isVirtualId(id)) throw new Error(`Node not found (or inside an instance): ${id}`);
+        if (id === mainId) throw new Error('A main component cannot become its own instance');
+        if (n.instanceOf) throw new Error(`Already an instance: ${id}`);
+        if (isRootId(id)) throw new Error('A page root cannot become an instance');
+        if (this.isInsideInstance(id)) throw new Error(INSTANCE_CHILDREN_ERROR);
+        if (this.ancestors(id).some((a) => wanted.has(a))) throw new Error('Inside another copy converted in the same call');
+        const parent = this.parentId(id);
+        if (!parent || !this.components.canPlaceInstance(mainId, parent)) {
+          throw new Error('An instance cannot be placed inside its own component (it would create a cycle)');
+        }
+        const children = this.realChildIds(id);
+        const descendants: string[] = [];
+        const stack = [...children];
+        while (stack.length) {
+          const d = stack.pop()!;
+          if (d === mainId || this.data.nodes[d]?.isComponent) throw new Error('The node contains a main component');
+          descendants.push(d);
+          stack.push(...this.realChildIds(d));
+        }
+        const plan = planInstanceConversion(this, id, mainId);
+        if (!plan.ok) throw new Error(plan.reason);
+        plans.push({ id, rootStyles: plan.rootStyles, overrides: plan.overrides, count: plan.overrideCount, children, descendants });
+      } catch (e) {
+        out.set(id, { error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    runInAction(() => {
+      for (const p of plans) {
+        const n = this.data.nodes[p.id]!;
+        // Mismo resultado que deleteNodes(children), sin volver a leer el índice de hijos tras
+        // cada cambio (sin observadores, MobX lo recalcularía entero en cada lectura).
+        for (const d of p.descendants) this.data.nodes[d]!['~'] = true;
+        for (const c of p.children) delete this.data.nodeRelationships[c];
+        n.instanceOf = mainId;
+        if (p.count) n.overrides = p.overrides;
+        else delete n.overrides;
+        this.replaceStyles(p.id, p.rootStyles);
+        out.set(p.id, { overrideCount: p.count });
+      }
+    });
+    return out;
+  }
+
+  /** Una sola copia (ver `convertToInstances`). Lanza si no encaja. */
+  convertToInstance(id: string, mainId: string): { overrideCount: number } {
+    const r = this.convertToInstances([id], mainId).get(id)!;
+    if ('error' in r) throw new Error(r.error);
+    return r;
   }
 
   // ------------------------------------------------------------------ páginas

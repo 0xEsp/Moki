@@ -439,6 +439,19 @@ export const TOOL_DEFS: ToolDef[] = [
     }),
   },
   {
+    name: 'convert_to_instances',
+    scope: 'file',
+    gate: 'write',
+    annotations: { destructiveHint: true },
+    description:
+      'Replace hand-made copies of a component with instances of it, in place: each node keeps its id, position and look, and whatever differs from the main (texts, sizes, colors, hidden layers) becomes a per-instance override. A copy must have the same layer structure as the main (same layer types, SVG content and number of children); the ones that do not are reported with the reason and left untouched. Use it to componentize existing designs; use dryRun first to see which copies match and how many overrides each would need (many overrides usually means a different variant that deserves its own main).',
+    schema: z.object({
+      componentId: z.string(),
+      nodeIds: z.array(z.string()).min(1).max(500),
+      dryRun: z.boolean().optional().describe('Only report what would happen.'),
+    }),
+  },
+  {
     name: 'list_components',
     scope: 'file',
     gate: 'read',

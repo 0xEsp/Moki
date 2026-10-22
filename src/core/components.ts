@@ -11,6 +11,18 @@ import type { StyleValue, Styles, TreeNode } from './types';
 // la instancia (`k` o `J::k`). Editar el main actualiza todas las instancias.
 
 export const VSEP = '::';
+
+/**
+ * Aplica estilos de override sobre los heredados: primero los 'unset' (quitar algo del main) y
+ * luego los valores, para que el resultado no dependa del orden en que se guardaron las claves
+ * (un 'padding: unset' guardado detrás de 'paddingTop' lo borraría).
+ */
+export function applyStyleOverride(base: Styles, patch: Styles): Styles {
+  const unsets: Styles = {};
+  const sets: Styles = {};
+  for (const [k, v] of Object.entries(patch)) (String(v).trim() === 'unset' ? unsets : sets)[k] = v;
+  return mergeStyles(mergeStyles(base, unsets), sets);
+}
 const MAX_DEPTH = 8;
 
 export interface NodeOverride {
@@ -29,7 +41,7 @@ export function splitVirtualId(id: string): string[] {
 export const outerInstanceOf = (id: string): string => id.split(VSEP)[0]!;
 
 /** Estilos del main que no se heredan en la raíz de la instancia (posición en su página). */
-const ROOT_POSITION_PROPS = ['position', 'left', 'top', 'right', 'bottom', 'inset', 'zIndex'];
+export const ROOT_POSITION_PROPS = ['position', 'left', 'top', 'right', 'bottom', 'inset', 'zIndex'];
 
 export interface ComponentEnv {
   /** Nodo guardado aunque esté borrado (soft delete): los mains borrados siguen pintando. */
@@ -94,7 +106,7 @@ export class ComponentResolver {
     if (!main) return { ...inst.styles };
     const base: Styles = {};
     for (const [k, v] of Object.entries(main.styles)) if (!ROOT_POSITION_PROPS.includes(k)) base[k] = v;
-    return mergeStyles(base, inst.styles);
+    return applyStyleOverride(base, inst.styles);
   }
 
   /** Overrides aplicables a un id virtual, de dentro hacia fuera (el nivel externo gana). */
@@ -117,7 +129,7 @@ export class ComponentResolver {
     let textValue = base.textValue;
     let isVisible = base.isVisible;
     for (const o of this.overridesFor(r)) {
-      if (o.styles) styles = mergeStyles(styles, o.styles);
+      if (o.styles) styles = applyStyleOverride(styles, o.styles);
       if (o.textValue !== undefined) textValue = o.textValue;
       if (o.isVisible !== undefined) isVisible = o.isVisible;
     }

@@ -39,6 +39,7 @@ import { htmlToNodes, truncateLabel, type ParsedTree } from './html-to-nodes';
 import { generateJsx } from './jsx';
 import { ARTBOARD_GAP, findPlacement } from './placement';
 import { serializeSvgNode } from './svg-export';
+import { planInstanceConversion } from '../../core/instance-convert';
 
 // Handlers de las herramientas MCP de scope "file". Se ejecutan dentro del runtime (editor
 // headless), que tiene el documento vivo, un motor de layout real y la conexión de sync.
@@ -134,6 +135,7 @@ export class McpHandlers {
       export_combined_pdf: (c, a) => this.exportCombinedPdf(c, a.nodeIds),
       create_component: (c, a) => this.createComponent(c, a.nodeId, a.name),
       create_instance: (c, a) => this.createInstance(c, a),
+      convert_to_instances: (c, a) => this.convertToInstances(c, a),
       list_components: (c, a) => this.listComponents(c, a.pageId),
       detach_instance: (c, a) => this.detachInstance(c, a.nodeId),
       reset_overrides: (c, a) => this.resetOverrides(c, a.nodeId),
@@ -199,6 +201,42 @@ export class McpHandlers {
         childIds: this.doc.childIds(id).slice(0, MAX_LIST),
       },
     };
+  }
+
+  private async convertToInstances(ctx: ToolCallContext, a: Args): Promise<HandlerResult> {
+    const mainId = String(a.componentId);
+    const main = this.doc.node(mainId);
+    if (!main?.isComponent) return { error: `Node ${mainId} is not a main component. Call create_component first.` };
+    const ids = (a.nodeIds as string[]) ?? [];
+    const dryRun = a.dryRun === true;
+    const results: { nodeId: string; converted: boolean; overrides?: number; reason?: string }[] = [];
+    if (dryRun) {
+      for (const id of ids) {
+        const plan = this.doc.node(id) ? planInstanceConversion(this.doc, id, mainId) : { ok: false as const, reason: `Node not found: ${id}` };
+        results.push(plan.ok ? { nodeId: id, converted: false, overrides: plan.overrideCount } : { nodeId: id, converted: false, reason: plan.reason });
+      }
+    } else {
+      let map = new Map<string, { overrideCount: number } | { error: string }>();
+      const t0 = performance.now();
+      this.mutate(() => {
+        map = this.doc.convertToInstances(ids, mainId);
+      });
+      console.log(`[moki-mcp] convert_to_instances: ${ids.length} copias, mutación ${Math.round(performance.now() - t0)}ms`);
+      for (const id of ids) {
+        const r = map.get(id);
+        if (r && 'overrideCount' in r) results.push({ nodeId: id, converted: true, overrides: r.overrideCount });
+        else results.push({ nodeId: id, converted: false, reason: r?.error ?? 'not processed' });
+      }
+    }
+    const done = results.filter((r) => r.converted).map((r) => r.nodeId);
+    if (done.length) {
+      this.activity.recordWrite(ctx, done, 'edit');
+      const t1 = performance.now();
+      await this.settle();
+      console.log(`[moki-mcp] convert_to_instances: espera de medida ${Math.round(performance.now() - t1)}ms`);
+    }
+    const failed = results.filter((r) => r.reason).length;
+    return { data: { componentId: mainId, dryRun, converted: done.length, matched: results.length - failed, failed, results } };
   }
 
   private listComponents(ctx: ToolCallContext, pageId?: string): HandlerResult {
